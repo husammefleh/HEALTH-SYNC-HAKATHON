@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # // HACKATHON: Ignore sensitive config and generated artifacts before GitHub push.
 .env
 *.json
@@ -51,3 +52,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+=======
+node_modules/
+.env
+*.pem
+*.key
+*.pfx
+logs
+*.log
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+dist/
+tmp/
+>>>>>>> 8a40df190d199a3f378498e8be2d69e9aaa4dbc8
