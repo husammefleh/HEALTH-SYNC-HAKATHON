@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/activity_entry.dart';
 import '../../models/food_entry.dart';
+import '../../models/health_reading.dart';
 import '../../models/medicine_entry.dart';
 import '../../models/sleep_entry.dart';
 import '../../state/app_state.dart';
@@ -14,7 +16,8 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final items = _buildHistory(appState);
+    final l10n = context.l10n;
+    final items = _buildHistory(appState, l10n);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final primary = colorScheme.primary;
@@ -24,8 +27,9 @@ class HistoryScreen extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'History',
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          l10n.translate('history'),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: colorScheme.surface,
@@ -33,7 +37,7 @@ class HistoryScreen extends StatelessWidget {
         iconTheme: IconThemeData(color: primary),
       ),
       body: items.isEmpty
-          ? const _EmptyHistory()
+          ? _EmptyHistory(l10n: l10n)
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: items.length,
@@ -69,46 +73,132 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 
-  List<_HistoryItem> _buildHistory(AppState state) {
-    final dateFormatter = DateFormat('yyyy/MM/dd - HH:mm');
+  List<_HistoryItem> _buildHistory(
+    AppState state,
+    AppLocalizations l10n,
+  ) {
+    final localeTag = l10n.locale.toLanguageTag();
+    final dateFormatter = DateFormat.yMMMd(localeTag).add_Hm();
+    final hederaSource = l10n.translate('historySyncedViaHedera');
+
     final List<_HistoryItem> entries = [
       for (final FoodEntry entry in state.foodEntries)
         _HistoryItem(
-          date: dateFormatter.format(entry.analysedAt),
+          date: l10n
+              .translate('historyRecordedOn')
+              .replaceFirst('{date}', dateFormatter.format(entry.analysedAt)),
           icon: Icons.restaurant_menu,
           color: Colors.orangeAccent,
-          title: 'Meal logged: ${entry.description}',
-          subtitle:
-              '${entry.calories} kcal · ${entry.proteinGrams.toStringAsFixed(1)} g protein · ${entry.carbsGrams.toStringAsFixed(1)} g carbs',
+          title: l10n
+              .translate('historyFoodTitle')
+              .replaceFirst('{name}', entry.description),
+          subtitle: [
+            l10n
+                .translate('historyFoodSubtitle')
+                .replaceFirst('{calories}', entry.calories.toString())
+                .replaceFirst(
+                    '{protein}', entry.proteinGrams.toStringAsFixed(1))
+                .replaceFirst('{carbs}', entry.carbsGrams.toStringAsFixed(1)),
+            hederaSource,
+          ].join('\n'),
           rawDate: entry.analysedAt,
         ),
       for (final SleepEntry entry in state.sleepEntries)
         _HistoryItem(
-          date: dateFormatter.format(entry.date),
+          date: l10n
+              .translate('historyRecordedOn')
+              .replaceFirst('{date}', dateFormatter.format(entry.date)),
           icon: Icons.nightlight_round,
           color: Colors.indigoAccent,
-          title: 'Sleep session: ${entry.hours.toStringAsFixed(1)} h',
-          subtitle: 'Manual entry saved',
+          title: l10n
+              .translate('historySleepTitle')
+              .replaceFirst('{hours}', entry.hours.toStringAsFixed(1)),
+          subtitle: [
+            if (entry.recommendation != null &&
+                entry.recommendation!.isNotEmpty)
+              l10n
+                  .translate('historySleepRecommendation')
+                  .replaceFirst('{tip}', entry.recommendation!)
+            else
+              l10n.translate('historySleepRecommendationPending'),
+            hederaSource,
+          ].join('\n'),
           rawDate: entry.date,
         ),
       for (final ActivityEntry entry in state.activityEntries)
         _HistoryItem(
-          date: dateFormatter.format(entry.createdAt),
+          date: l10n
+              .translate('historyRecordedOn')
+              .replaceFirst('{date}', dateFormatter.format(entry.createdAt)),
           icon: Icons.fitness_center,
           color: Colors.green,
-          title: 'Activity: ${entry.name}',
-          subtitle: '${entry.minutes} min - ${entry.calories} kcal burned',
+          title: l10n
+              .translate('historyActivityTitle')
+              .replaceFirst('{name}', entry.name),
+          subtitle: [
+            l10n
+                .translate('historyActivitySubtitle')
+                .replaceFirst('{minutes}', entry.minutes.toString())
+                .replaceFirst('{calories}', entry.calories.toString()),
+            hederaSource,
+          ].join('\n'),
           rawDate: entry.createdAt,
         ),
       for (final MedicineEntry entry in state.medicineEntries)
         _HistoryItem(
-          date: dateFormatter.format(entry.createdAt),
+          date: l10n
+              .translate('historyRecordedOn')
+              .replaceFirst('{date}', dateFormatter.format(entry.createdAt)),
           icon: Icons.medical_services_outlined,
           color: Colors.redAccent,
-          title: 'Medication: ${entry.medicine}',
-          subtitle:
-              'For ${entry.disease} - reminder at ${entry.time} - ${entry.taken ? 'taken' : 'pending'}',
+          title: l10n
+              .translate('historyMedicineTitle')
+              .replaceFirst('{name}', entry.medicineName),
+          subtitle: [
+            l10n
+                .translate('historyMedicineSubtitle')
+                .replaceFirst('{dosage}', entry.dosage)
+                .replaceFirst('{frequency}', entry.frequencyPerDay.toString())
+                .replaceFirst('{duration}', entry.durationDays.toString())
+                .replaceFirst(
+                  '{taken}',
+                  entry.taken
+                      ? l10n.translate('historyMedicineTakenSuffix')
+                      : '',
+                ),
+            hederaSource,
+          ].join('\n'),
           rawDate: entry.createdAt,
+        ),
+      for (final HealthReading reading in state.healthReadings)
+        _HistoryItem(
+          date: l10n
+              .translate('historyRecordedOn')
+              .replaceFirst('{date}', dateFormatter.format(reading.recordedAt)),
+          icon: Icons.monitor_heart,
+          color: Colors.purple,
+          title: l10n.translate('historyHealthTitle'),
+          subtitle: [
+            l10n
+                .translate('historyHealthSubtitle')
+                .replaceFirst(
+                  '{bloodPressure}',
+                  reading.bloodPressure.toStringAsFixed(0),
+                )
+                .replaceFirst(
+                  '{bloodSugar}',
+                  reading.sugarLevel.toStringAsFixed(0),
+                ),
+            if (reading.recommendation != null &&
+                reading.recommendation!.isNotEmpty)
+              l10n
+                  .translate('historyHealthRecommendation')
+                  .replaceFirst('{tip}', reading.recommendation!)
+            else
+              l10n.translate('historyHealthRecommendationPending'),
+            hederaSource,
+          ].join('\n'),
+          rawDate: reading.recordedAt,
         ),
     ];
 
@@ -136,7 +226,9 @@ class _HistoryItem {
 }
 
 class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory();
+  const _EmptyHistory({required this.l10n});
+
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -151,13 +243,13 @@ class _EmptyHistory extends StatelessWidget {
             Icon(Icons.history, color: primary, size: 80),
             const SizedBox(height: 20),
             Text(
-              'No activity recorded yet.',
+              l10n.translate('historyEmptyTitle'),
               style: theme.textTheme.titleMedium?.copyWith(fontSize: 20),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
             Text(
-              'Log meals, sleep, workouts or medication to build your personal history.',
+              l10n.translate('historyEmptyDescription'),
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontSize: 16,
                 color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
@@ -169,7 +261,7 @@ class _EmptyHistory extends StatelessWidget {
               onPressed: () {},
               icon: Icon(Icons.explore, color: theme.colorScheme.onPrimary),
               label: Text(
-                'Start tracking',
+                l10n.translate('historyStartTracking'),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontSize: 16,
                   color: theme.colorScheme.onPrimary,

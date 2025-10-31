@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../models/analysis_models.dart';
 import '../../../models/medicine_entry.dart';
 import '../../../state/app_state.dart';
+import '../../common/ai_loading_screen.dart';
+import '../../common/hedera_badge.dart';
 import 'add_medicine_screen.dart';
+import 'medicine_result_screen.dart';
 
 class MedicineScreen extends StatelessWidget {
   const MedicineScreen({super.key});
@@ -26,7 +30,8 @@ class MedicineScreen extends StatelessWidget {
         centerTitle: true,
         title: Text(
           'Medication',
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         iconTheme: IconThemeData(color: primary),
       ),
@@ -46,7 +51,7 @@ class MedicineScreen extends StatelessWidget {
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
                     title: Text(
-                      medicine.medicine,
+                      medicine.medicineName,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -60,17 +65,35 @@ class MedicineScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Condition: ${medicine.disease}',
+                          'Dosage: ${medicine.dosage}',
                           style: theme.textTheme.bodyMedium,
                         ),
                         Text(
-                          'Reminder time: ${medicine.time}',
+                          'Frequency: ${medicine.frequencyPerDay} / day',
                           style: theme.textTheme.bodyMedium,
                         ),
                         Text(
                           'Duration: ${medicine.durationDays} days',
                           style: theme.textTheme.bodyMedium,
                         ),
+                        if (medicine.recommendation != null &&
+                            medicine.recommendation!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              medicine.recommendation!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.textTheme.bodySmall?.color
+                                    ?.withOpacity(0.7),
+                              ),
+                            ),
+                          ),
+                        Text(
+                          'Added: ${medicine.createdAt.toLocal().toString().split(' ').first}',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        const HederaBadge(compact: true),
                       ],
                     ),
                     trailing: IconButton(
@@ -107,18 +130,41 @@ class MedicineScreen extends StatelessWidget {
     );
 
     if (!context.mounted) return;
-    if (data != null) {
-      await context.read<AppState>().addMedicine(
-            disease: data['disease'] as String,
-            medicine: data['medicine'] as String,
-            durationDays: data['duration'] as int,
-            time: data['time'] as String,
-            reminder: data['reminder'] as bool,
-          );
-      if (!context.mounted) return;
+    if (!context.mounted || data == null) return;
+
+    final name = data['medicineName'] as String;
+    final dosage = data['dosage'] as String;
+    final frequency = data['frequencyPerDay'] as int;
+    final duration = data['durationDays'] as int;
+
+    final result = await navigator.push<MedicineAnalysisOutput>(
+      AiLoadingScreen.route(
+        AiAnalysisRequest<MedicineAnalysisOutput>(
+          loadingTitle: 'Analysing your medication...',
+          loadingDescription:
+              'We are preparing adherence insights and reminder guidance.',
+          icon: Icons.medication,
+          perform: (coordinator, appState) =>
+              coordinator.performMedicineAnalysis(
+            MedicineAnalysisInput(
+              medicineName: name,
+              dosage: dosage,
+              frequencyPerDay: frequency,
+              durationDays: duration,
+            ),
+          ),
+          onResult: (context, analysis) =>
+              MedicineResultScreen(result: analysis),
+        ),
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    if (result != null) {
       messenger.showSnackBar(
         SnackBar(
-          content: const Text('Medication saved to your schedule.'),
+          content: const Text('Medication saved to your history.'),
           backgroundColor: theme.colorScheme.primary,
         ),
       );

@@ -8,22 +8,61 @@ import 'screens/auth/register_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/home/medicine/add_medicine_screen.dart';
 import 'screens/home/sleep/add_sleep_screen.dart';
-import 'screens/home/sleep/loading_sleep_screen.dart';
-import 'screens/home/sleep/sleep_result_screen.dart';
 import 'screens/home/sleep/sleep_screen.dart';
 import 'screens/home/food/food_add_screen.dart';
 import 'screens/home/sport/add_activity_screen.dart';
-import 'screens/home/sport/loading_activity_screen.dart';
 import 'screens/onboarding/step1_age_screen.dart';
 import 'screens/onboarding/summary_screen.dart';
 import 'screens/splash_screen.dart';
 import 'state/app_state.dart';
+import 'services/api/activity_service.dart';
+import 'services/api/api_base_service.dart';
+import 'services/api/app_settings_service.dart';
+import 'services/api/ai_api_service.dart';
+import 'services/api/auth_service.dart';
+import 'services/api/food_service.dart';
+import 'services/api/hedera_mirror_service.dart';
+import 'services/api/hedera_writer_service.dart';
+import 'services/api/health_reading_service.dart';
+import 'services/api/medicine_service.dart';
+import 'services/api/sleep_service.dart';
+import 'services/api/user_profile_service.dart';
 import 'services/theme_and_locale_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final appState = AppState();
+  late final AppState appState;
   final themeAndLocaleService = ThemeAndLocaleService();
+  final apiService = ApiBaseService(
+    onUnauthorized: () {
+      appState.logout();
+    },
+  );
+  final authService = AuthService(apiService);
+  final userProfileApi = UserProfileApiService(apiService);
+  final appSettingsApi = AppSettingsApiService(apiService);
+  final foodApi = FoodApiService(apiService);
+  final sleepApi = SleepApiService(apiService);
+  final activityApi = ActivityApiService(apiService);
+  final medicineApi = MedicineApiService(apiService);
+  final healthApi = HealthReadingApiService(apiService);
+  final aiApi = AiApiService();
+  final hederaWriter = HederaWriterService();
+  final hederaMirror = HederaMirrorService();
+
+  appState = AppState(
+    authService: authService,
+    userProfileApi: userProfileApi,
+    appSettingsApi: appSettingsApi,
+    foodApi: foodApi,
+    sleepApi: sleepApi,
+    activityApi: activityApi,
+    medicineApi: medicineApi,
+    healthApi: healthApi,
+    aiApi: aiApi,
+    hederaMirror: hederaMirror,
+  );
+
   await Future.wait([
     appState.load(),
     themeAndLocaleService.initialize(),
@@ -32,6 +71,18 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        Provider<ApiBaseService>.value(value: apiService),
+        Provider<AuthService>.value(value: authService),
+        Provider<UserProfileApiService>.value(value: userProfileApi),
+        Provider<AppSettingsApiService>.value(value: appSettingsApi),
+        Provider<FoodApiService>.value(value: foodApi),
+        Provider<SleepApiService>.value(value: sleepApi),
+        Provider<ActivityApiService>.value(value: activityApi),
+        Provider<MedicineApiService>.value(value: medicineApi),
+        Provider<HealthReadingApiService>.value(value: healthApi),
+        Provider<AiApiService>.value(value: aiApi),
+        Provider<HederaWriterService>.value(value: hederaWriter),
+        Provider<HederaMirrorService>.value(value: hederaMirror),
         ChangeNotifierProvider.value(value: appState),
         ChangeNotifierProvider.value(value: themeAndLocaleService),
       ],
@@ -47,7 +98,7 @@ class HealthApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeAndLocale = context.watch<ThemeAndLocaleService>();
 
-    final colorSeed = Colors.teal;
+    const colorSeed = Colors.teal;
     final ThemeData lightTheme = ThemeData(
       colorScheme: ColorScheme.fromSeed(seedColor: colorSeed),
       scaffoldBackgroundColor: Colors.grey[50],
@@ -66,7 +117,8 @@ class HealthApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      onGenerateTitle: (context) => AppLocalizations.of(context).translate('appTitle'),
+      onGenerateTitle: (context) =>
+          AppLocalizations.of(context).translate('appTitle'),
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
@@ -87,24 +139,12 @@ class HealthApp extends StatelessWidget {
         '/home': (_) => const HomeScreen(),
         '/sleep': (_) => const SleepScreen(),
         '/add_sleep': (_) => const AddSleepScreen(),
-        '/sleep_result': (_) => const SleepResultScreen(),
         '/food_add': (_) => const FoodAddScreen(),
         '/activity_add': (_) => const AddActivityScreen(),
         '/medicine_add': (_) => const AddMedicineScreen(),
       },
       onGenerateRoute: (settings) {
         switch (settings.name) {
-          case '/loading_sleep':
-            final hours = settings.arguments as double? ?? 0;
-            return MaterialPageRoute(
-              builder: (_) => const LoadingSleepScreen(),
-              settings: RouteSettings(arguments: hours),
-            );
-          case '/activity_loading':
-            final activity = settings.arguments as Map<String, dynamic>;
-            return MaterialPageRoute(
-              builder: (_) => LoadingActivityScreen(activityData: activity),
-            );
           case '/onboarding':
             return MaterialPageRoute(
               builder: (_) => const Step1AgeScreen(),
@@ -117,7 +157,6 @@ class HealthApp extends StatelessWidget {
                 height: args['height'] as double,
                 weight: args['weight'] as double,
                 gender: args['gender'] as String,
-                goal: args['goal'] as String,
                 hasDiabetes: args['hasDiabetes'] as bool,
                 hasHypertension: args['hasHypertension'] as bool,
                 age: args['age'] as int,
@@ -135,4 +174,3 @@ class HealthApp extends StatelessWidget {
     );
   }
 }
-

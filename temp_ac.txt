@@ -1,0 +1,495 @@
+import 'dart:async';
+
+import 'package:uuid/uuid.dart';
+
+import '../../models/analysis_models.dart';
+import '../../state/app_state.dart';
+import '../api/ai_api_service.dart';
+import '../api/api_exception.dart';
+import '../api/external_api_config.dart';
+import '../api/hedera_writer_service.dart';
+
+class AnalysisCoordinator {
+  AnalysisCoordinator({
+    required AiApiService aiApi,
+    required HederaWriterService hederaWriter,
+    required AppState appState,
+    Uuid? uuid,
+  })  : _aiApi = aiApi,
+        _hederaWriter = hederaWriter,
+        _appState = appState,
+        _uuid = uuid ?? const Uuid();
+
+  final AiApiService _aiApi;
+  final HederaWriterService _hederaWriter;
+  final AppState _appState;
+  final Uuid _uuid;
+
+  Future<FoodAnalysisOutput> performFoodAnalysis(
+    FoodAnalysisInput input,
+  ) async {
+    final aiResponse = await _aiApi.analyzeFood({
+      'description': input.description,
+      if (input.mealType != null) 'mealType': input.mealType,
+      if (input.drink != null) 'drink': input.drink,
+      if (input.dessert != null) 'dessert': input.dessert,
+    });
+
+    final calories =
+        _parseInt(_resolveField(aiResponse, const ['calories', 'calorie', 'energy']));
+    final protein =
+        _parseDouble(_resolveField(aiResponse, const ['protein', 'proteinGrams', 'protein_g']));
+    final carbs =
+        _parseDouble(_resolveField(aiResponse, const ['carbs', 'carbohydrates', 'carbohydrates_g']));
+    final fat =
+        _parseDouble(_resolveField(aiResponse, const ['fat', 'fats', 'fat_g']));
+    final cholesterol =
+        _parseDouble(_resolveField(aiResponse, const ['cholesterol', 'cholesterolMg']));
+    final summary = _stringValue(
+      _resolveField(aiResponse, const ['summary', 'analysis', 'insight']),
+    );
+    final recommendation = _extractRecommendation(aiResponse);
+
+    final generatedAt = DateTime.now();
+    final recordId = _uuid.v4();
+
+    final topicId = ExternalApiConfig.foodTopicId;
+
+    HederaSubmissionResult? writerResult;
+    bool persisted;
+
+    if (topicId.isNotEmpty) {
+      final payload = <String, dynamic>{
+        'id': recordId,
+        'description': input.description,
+        if (input.mealType != null) 'mealType': input.mealType,
+        if (input.drink != null) 'drink': input.drink,
+        if (input.dessert != null) 'dessert': input.dessert,
+        'calories': calories,
+        'protein': protein,
+        'carbs': carbs,
+        'fat': fat,
+        'cholesterol': cholesterol,
+        'timestamp': generatedAt.toIso8601String(),
+      };
+
+      writerResult = await _hederaWriter.addRecord(
+        topicId: topicId,
+        message: payload,
+      );
+
+      await _appState.cacheFoodMetadata(
+        id: recordId,
+        description: input.description,
+        mealType: input.mealType,
+        drink: input.drink,
+        dessert: input.dessert,
+        recommendation: recommendation,
+        analysedAt: generatedAt,
+      );
+
+      persisted = await _awaitMirrorSync(
+        () => _appState.syncFoodFromMirror(notify: true),
+        () => _appState.foodEntries.any((entry) => entry.id == recordId),
+      );
+    } else {
+      writerResult = null;
+      await _appState.refreshFoodEntries();
+      persisted = true;
+    }
+
+    return FoodAnalysisOutput(
+      recordId: recordId,
+      generatedAt: generatedAt,
+      persisted: persisted,
+      transactionId: writerResult?.transactionId,
+      consensusTimestamp: writerResult?.consensusTimestamp,
+      rawResponse: aiResponse,
+      description: input.description,
+      mealType: input.mealType,
+      drink: input.drink,
+      dessert: input.dessert,
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+      cholesterol: cholesterol,
+      recommendation: recommendation,
+      summary: summary,
+    );
+  }
+
+  Future<SleepAnalysisOutput> performSleepAnalysis(
+    SleepAnalysisInput input,
+  ) async {
+    final aiResponse = await _aiApi.analyzeSleep({
+      'sleepHours': input.hours,
+      'hours': input.hours,
+      'sleepDate': input.sleepDate.toIso8601String(),
+    });
+
+    final recommendation = _extractRecommendation(aiResponse);
+    final summary = _stringValue(
+      _resolveField(aiResponse, const ['summary', 'analysis', 'insight']),
+    );
+
+    final generatedAt = DateTime.now();
+    final recordId = _uuid.v4();
+
+    final topicId = ExternalApiConfig.sleepTopicId;
+
+    HederaSubmissionResult? writerResult;
+    bool persisted;
+
+    if (topicId.isNotEmpty) {
+      final payload = <String, dynamic>{
+        'id': recordId,
+        'sleepHours': input.hours,
+        'sleepDate': input.sleepDate.toIso8601String(),
+        'timestamp': generatedAt.toIso8601String(),
+      };
+
+      writerResult = await _hederaWriter.addRecord(
+        topicId: topicId,
+        message: payload,
+      );
+
+      await _appState.cacheSleepRecommendation(
+        id: recordId,
+        recommendation: recommendation,
+        hours: input.hours,
+        date: input.sleepDate,
+      );
+
+      persisted = await _awaitMirrorSync(
+        () => _appState.syncSleepFromMirror(notify: true),
+        () => _appState.sleepEntries.any((entry) => entry.id == recordId),
+      );
+    } else {
+      writerResult = null;
+      await _appState.refreshSleepEntries();
+      persisted = true;
+    }
+
+    return SleepAnalysisOutput(
+      recordId: recordId,
+      generatedAt: generatedAt,
+      persisted: persisted,
+      transactionId: writerResult?.transactionId,
+      consensusTimestamp: writerResult?.consensusTimestamp,
+      rawResponse: aiResponse,
+      hours: input.hours,
+      sleepDate: input.sleepDate,
+      recommendation: recommendation,
+      summary: summary,
+    );
+  }
+
+  Future<ActivityAnalysisOutput> performActivityAnalysis(
+    ActivityAnalysisInput input,
+  ) async {
+    final aiResponse = await _aiApi.analyzeActivity({
+      'exerciseType': input.exerciseType,
+      'durationMinutes': input.durationMinutes,
+      'duration': input.durationMinutes,
+    });
+
+    final calories = _parseInt(
+      _resolveField(
+        aiResponse,
+        const ['caloriesBurned', 'calories', 'energySpent'],
+      ),
+    );
+    final recommendation = _extractRecommendation(aiResponse);
+    final summary = _stringValue(
+      _resolveField(aiResponse, const ['summary', 'analysis', 'insight']),
+    );
+    final secondaryTip = _stringValue(
+      _resolveField(aiResponse, const ['tip', 'secondaryTip', 'note']),
+    );
+
+    final generatedAt = DateTime.now();
+    final recordId = _uuid.v4();
+
+    final topicId = ExternalApiConfig.activityTopicId;
+
+    HederaSubmissionResult? writerResult;
+    bool persisted;
+
+    if (topicId.isNotEmpty) {
+      final payload = <String, dynamic>{
+        'id': recordId,
+        'exerciseType': input.exerciseType,
+        'durationMinutes': input.durationMinutes,
+        'caloriesBurned': calories,
+        'timestamp': generatedAt.toIso8601String(),
+      };
+
+      writerResult = await _hederaWriter.addRecord(
+        topicId: topicId,
+        message: payload,
+      );
+
+      await _appState.cacheActivityRecommendation(
+        id: recordId,
+        recommendation: recommendation,
+        name: input.exerciseType,
+        minutes: input.durationMinutes,
+      );
+
+      persisted = await _awaitMirrorSync(
+        () => _appState.syncActivityFromMirror(notify: true),
+        () => _appState.activityEntries.any((entry) => entry.id == recordId),
+      );
+    } else {
+      writerResult = null;
+      await _appState.refreshActivityEntries();
+      persisted = true;
+    }
+
+    return ActivityAnalysisOutput(
+      recordId: recordId,
+      generatedAt: generatedAt,
+      persisted: persisted,
+      transactionId: writerResult?.transactionId,
+      consensusTimestamp: writerResult?.consensusTimestamp,
+      rawResponse: aiResponse,
+      exerciseType: input.exerciseType,
+      durationMinutes: input.durationMinutes,
+      caloriesBurned: calories,
+      recommendation: recommendation,
+      summary: summary,
+      secondaryTip: secondaryTip,
+    );
+  }
+
+  Future<HealthAnalysisOutput> performHealthAnalysis(
+    HealthAnalysisInput input,
+  ) async {
+    final aiResponse = await _aiApi.analyzeHealth({
+      'bloodPressure': input.bloodPressure,
+      'sugarLevel': input.sugarLevel,
+      'recordedAt': input.recordedAt.toIso8601String(),
+    });
+
+    final recommendation = _extractRecommendation(aiResponse);
+    final summary = _stringValue(
+      _resolveField(aiResponse, const ['summary', 'analysis', 'insight']),
+    );
+    final heartRate = _parseDouble(
+      _resolveField(aiResponse, const ['heartRate', 'pulse']),
+      defaultValue: double.nan,
+    );
+
+    final generatedAt = DateTime.now();
+    final recordId = _uuid.v4();
+
+    final topicId =
+        _requireTopicId(ExternalApiConfig.healthTopicId, 'health reading');
+
+    final payload = <String, dynamic>{
+      'id': recordId,
+      'bloodPressure': input.bloodPressure,
+      'sugarLevel': input.sugarLevel,
+      'recordedAt': input.recordedAt.toIso8601String(),
+      'timestamp': generatedAt.toIso8601String(),
+    };
+
+    final writerResult = await _hederaWriter.addRecord(
+      topicId: topicId,
+      message: payload,
+    );
+
+    await _appState.cacheHealthRecommendation(
+      id: recordId,
+      recommendation: recommendation,
+      bloodPressure: input.bloodPressure,
+      sugarLevel: input.sugarLevel,
+      heartRate: heartRate.isNaN ? null : heartRate,
+      recordedAt: input.recordedAt,
+    );
+
+    final persisted = await _awaitMirrorSync(
+      () => _appState.syncHealthFromMirror(notify: true),
+      () => _appState.healthReadings.any((entry) => entry.id == recordId),
+    );
+
+    return HealthAnalysisOutput(
+      recordId: recordId,
+      generatedAt: generatedAt,
+      persisted: persisted,
+      transactionId:
+          writerResult.transactionId.isNotEmpty ? writerResult.transactionId : null,
+      consensusTimestamp: writerResult.consensusTimestamp,
+      rawResponse: aiResponse,
+      bloodPressure: input.bloodPressure,
+      sugarLevel: input.sugarLevel,
+      heartRate: heartRate.isNaN ? null : heartRate,
+      recommendation: recommendation,
+      summary: summary,
+    );
+  }
+
+  Future<MedicineAnalysisOutput> performMedicineAnalysis(
+    MedicineAnalysisInput input,
+  ) async {
+    final aiResponse = await _aiApi.analyzeMedicine({
+      'medicineName': input.medicineName,
+      'dosage': input.dosage,
+      'frequencyPerDay': input.frequencyPerDay,
+      'durationDays': input.durationDays,
+      'duration': input.durationDays,
+    });
+
+    final recommendation = _extractRecommendation(aiResponse);
+    final summary = _stringValue(
+      _resolveField(aiResponse, const ['summary', 'analysis', 'insight']),
+    );
+
+    final generatedAt = DateTime.now();
+    final recordId = _uuid.v4();
+
+    final topicId =
+        _requireTopicId(ExternalApiConfig.medicineTopicId, 'medicine entry');
+
+    final payload = <String, dynamic>{
+      'id': recordId,
+      'medicineName': input.medicineName,
+      'dosage': input.dosage,
+      'frequencyPerDay': input.frequencyPerDay,
+      'durationDays': input.durationDays,
+      'startDate': generatedAt.toIso8601String(),
+    };
+
+    final writerResult = await _hederaWriter.addRecord(
+      topicId: topicId,
+      message: payload,
+    );
+
+    await _appState.cacheMedicineMetadata(
+      id: recordId,
+      recommendation: recommendation,
+      dosage: input.dosage,
+      frequencyPerDay: input.frequencyPerDay,
+      durationDays: input.durationDays,
+      medicineName: input.medicineName,
+      createdAt: generatedAt,
+    );
+
+    final persisted = await _awaitMirrorSync(
+      () => _appState.syncMedicineFromMirror(notify: true),
+      () => _appState.medicineEntries.any((entry) => entry.id == recordId),
+    );
+
+    return MedicineAnalysisOutput(
+      recordId: recordId,
+      generatedAt: generatedAt,
+      persisted: persisted,
+      transactionId:
+          writerResult.transactionId.isNotEmpty ? writerResult.transactionId : null,
+      consensusTimestamp: writerResult.consensusTimestamp,
+      rawResponse: aiResponse,
+      medicineName: input.medicineName,
+      dosage: input.dosage,
+      frequencyPerDay: input.frequencyPerDay,
+      durationDays: input.durationDays,
+      recommendation: recommendation,
+      summary: summary,
+    );
+  }
+
+  String _requireTopicId(String value, String contextLabel) {
+    if (value.isEmpty) {
+      throw ApiException(
+        message: 'Hedera topic id is not configured for $contextLabel.',
+      );
+    }
+    return value;
+  }
+
+  Future<bool> _awaitMirrorSync(
+    Future<void> Function() refresh,
+    bool Function() predicate,
+  ) async {
+    const maxAttempts = 5;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      await refresh();
+      if (predicate()) return true;
+      await Future.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+    }
+    return predicate();
+  }
+
+  static String _extractRecommendation(Map<String, dynamic> data) {
+    final value = _stringValue(
+      _resolveField(
+        data,
+        const ['recommendation', 'advice', 'tip', 'guidance'],
+      ),
+    );
+    if (value != null && value.isNotEmpty) return value;
+    return 'No recommendation available yet.';
+  }
+
+  static dynamic _resolveField(
+    Map<String, dynamic> data,
+    List<String> keys, {
+    int depth = 0,
+  }) {
+    if (depth > 4) return null;
+    for (final key in keys) {
+      if (data.containsKey(key)) {
+        final value = data[key];
+        if (value != null) return value;
+      }
+    }
+
+    for (final value in data.values) {
+      if (value is Map<String, dynamic>) {
+        final nested = _resolveField(value, keys, depth: depth + 1);
+        if (nested != null) return nested;
+      } else if (value is List) {
+        for (final element in value) {
+          if (element is Map<String, dynamic>) {
+            final nested = _resolveField(element, keys, depth: depth + 1);
+            if (nested != null) return nested;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  static String? _stringValue(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+    if (value is num) return value.toString();
+    return null;
+  }
+
+  static double _parseDouble(
+    dynamic value, {
+    double defaultValue = 0,
+  }) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final normalized = value.replaceAll(',', '.');
+      final match = RegExp(r'-?\d+(\.\d+)?').firstMatch(normalized);
+      if (match != null) {
+        return double.tryParse(match.group(0)!) ?? defaultValue;
+      }
+    }
+    return defaultValue;
+  }
+
+  static int _parseInt(
+    dynamic value, {
+    int defaultValue = 0,
+  }) {
+    final doubleValue = _parseDouble(value, defaultValue: defaultValue.toDouble());
+    return doubleValue.round();
+  }
+}

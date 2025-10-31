@@ -38,7 +38,7 @@ class _Step2HeightScreenState extends State<Step2HeightScreen> {
           children: [
             LinearProgressIndicator(
               value: 0.4,
-              backgroundColor: colorScheme.surfaceVariant,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               color: colorScheme.primary,
               minHeight: 6,
             ),

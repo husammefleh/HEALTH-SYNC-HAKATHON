@@ -4,6 +4,7 @@ class ActivityEntry {
   final int minutes;
   final int calories;
   final DateTime createdAt;
+  final String? recommendation;
 
   const ActivityEntry({
     required this.id,
@@ -11,6 +12,7 @@ class ActivityEntry {
     required this.minutes,
     required this.calories,
     required this.createdAt,
+    this.recommendation,
   });
 
   Map<String, dynamic> toMap() {
@@ -20,6 +22,7 @@ class ActivityEntry {
       'minutes': minutes,
       'calories': calories,
       'createdAt': createdAt.toIso8601String(),
+      'recommendation': recommendation,
     };
   }
 
@@ -30,6 +33,7 @@ class ActivityEntry {
       minutes: (map['minutes'] as num).toInt(),
       calories: (map['calories'] as num).toInt(),
       createdAt: DateTime.parse(map['createdAt'] as String),
+      recommendation: map['recommendation'] as String?,
     );
   }
 }

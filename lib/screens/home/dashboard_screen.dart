@@ -12,21 +12,18 @@ class DashboardScreen extends StatelessWidget {
     final appState = context.watch<AppState>();
     final pieData = _buildPieData(appState);
     final lineData = _buildWeeklySpots(appState);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final primary = colorScheme.primary;
-    final isDark = theme.brightness == Brightness.dark;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Health insights',
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: colorScheme.surface,
-        elevation: isDark ? 0 : 2,
+        backgroundColor: Colors.white,
+        elevation: 2,
         iconTheme: IconThemeData(color: primary),
       ),
       body: SingleChildScrollView(
@@ -45,7 +42,6 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             _buildSectionCard(
-              context,
               title: 'Daily contribution by habit',
               child: pieData.isEmpty
                   ? const _PlaceholderMessage(
@@ -65,7 +61,6 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 25),
             _buildSectionCard(
-              context,
               title: 'Sleep trend over the last 7 days',
               child: lineData.isEmpty
                   ? const _PlaceholderMessage(
@@ -76,11 +71,11 @@ class DashboardScreen extends StatelessWidget {
                       height: 220,
                       child: LineChart(
                         LineChartData(
-                          backgroundColor: colorScheme.surface,
-                          gridData: FlGridData(show: true),
+                          backgroundColor: Colors.white,
+                          gridData: const FlGridData(show: true),
                           borderData: FlBorderData(show: true),
                           titlesData: FlTitlesData(
-                            leftTitles: AxisTitles(
+                            leftTitles: const AxisTitles(
                               sideTitles: SideTitles(showTitles: true),
                             ),
                             bottomTitles: AxisTitles(
@@ -110,7 +105,7 @@ class DashboardScreen extends StatelessWidget {
                               isCurved: true,
                               color: primary,
                               barWidth: 4,
-                              dotData: FlDotData(show: true),
+                              dotData: const FlDotData(show: true),
                               belowBarData: BarAreaData(
                                 show: true,
                                 color: primary.withAlpha(26),
@@ -124,7 +119,6 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 25),
             _buildSectionCard(
-              context,
               title: 'Highlights',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,35 +213,30 @@ class DashboardScreen extends StatelessWidget {
     return hasData ? spots : [];
   }
 
-  Widget _buildSectionCard(BuildContext context,
-      {required String title, required Widget child}) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+  Widget _buildSectionCard({required String title, required Widget child}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: isDark
-            ? const []
-            : const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: const TextStyle(
+              fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: colorScheme.primary,
+              color: Colors.teal,
             ),
           ),
           const SizedBox(height: 15),
@@ -270,10 +259,7 @@ class _PlaceholderMessage extends StatelessWidget {
       child: Center(
         child: Text(
           message,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
+          style: const TextStyle(color: Colors.black54),
           textAlign: TextAlign.center,
         ),
       ),

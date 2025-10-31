@@ -1,0 +1,36 @@
+                    style: TextStyle(fontSize: 15, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+            Text(
+              'Recent sessions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: primary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            entries.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Text(
+                        'No workouts recorded yet. Add your first activity to begin tracking.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: entries.map((activity) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          leading: Icon(Icons.fitness_center, color: primary),
+                          title: Text(
+                            activity.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),

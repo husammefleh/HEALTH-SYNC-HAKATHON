@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
-
 import '../../../l10n/app_localizations.dart';
-import '../../../models/food_entry.dart';
-import '../../../state/app_state.dart';
+import '../../../models/analysis_models.dart';
+import '../../common/ai_loading_screen.dart';
 import 'food_analysis_screen.dart';
 
 class FoodAddScreen extends StatefulWidget {
@@ -30,35 +27,29 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   Future<void> _startAnalysis() async {
     if (!_formKey.currentState!.validate()) return;
     final description = _descriptionController.text.trim();
+    final l10n = context.l10n;
 
-    final result = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        builder: (_) => FoodAnalysisScreen(
-          description: description,
-          mealType: _mealType,
-          drink: _drink,
-          dessert: _dessert,
+    final result = await Navigator.of(context).push<FoodAnalysisOutput>(
+      AiLoadingScreen.route(
+        AiAnalysisRequest<FoodAnalysisOutput>(
+          loadingTitle: l10n.translate('analysingMealPlaceholder'),
+          loadingDescription:
+              'We are estimating macros and tailoring feedback for this meal.',
+          icon: Icons.fastfood,
+          perform: (coordinator, appState) => coordinator.performFoodAnalysis(
+            FoodAnalysisInput(
+              description: description,
+              mealType: _mealType,
+              drink: _drink,
+              dessert: _dessert,
+            ),
+          ),
+          onResult: (context, analysis) => FoodAnalysisScreen(result: analysis),
         ),
       ),
     );
 
     if (!mounted || result == null) return;
-
-    final entry = FoodEntry(
-      id: const Uuid().v4(),
-      description: description,
-      mealType: _mealType,
-      drink: _drink,
-      dessert: _dessert,
-      calories: result['calories'] as int,
-      proteinGrams: (result['protein'] as num).toDouble(),
-      carbsGrams: (result['carbs'] as num).toDouble(),
-      fatGrams: (result['fats'] as num).toDouble(),
-      aiSummary: result['summary'] as String,
-      analysedAt: DateTime.now(),
-    );
-
-    await context.read<AppState>().addAnalysedMeal(entry);
     if (!mounted) return;
     Navigator.of(context).pop(true);
   }
@@ -95,8 +86,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 decoration: InputDecoration(
                   labelText: l10n.translate('mealDescriptionLabel'),
                   hintText: l10n.translate('mealDescriptionHint'),
-                  prefixIcon:
-                      Icon(Icons.fastfood, color: colorScheme.primary),
+                  prefixIcon: Icon(Icons.fastfood, color: colorScheme.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -104,6 +94,10 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return l10n.translate('mealDescriptionError');
+                  }
+                  final trimmed = value.trim();
+                  if (trimmed.length < 12 || !trimmed.contains(' ')) {
+                    return l10n.translate('mealDescriptionDetailError');
                   }
                   return null;
                 },
@@ -198,8 +192,7 @@ class _OptionalChoiceGroup extends StatelessWidget {
                 (value) => ChoiceChip(
                   label: Text(l10n.translate(value)),
                   selected: selectedValue == value,
-                  onSelected: (selected) =>
-                      onChanged(selected ? value : null),
+                  onSelected: (selected) => onChanged(selected ? value : null),
                 ),
               )
               .toList(),

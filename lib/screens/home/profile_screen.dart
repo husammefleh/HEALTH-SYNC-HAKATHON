@@ -16,6 +16,9 @@ class ProfileScreen extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final primary = colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
+    final displayName =
+        user?.username ?? profile?.preferredName ?? 'Health Sync member';
+    final email = user?.email ?? '';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -50,7 +53,7 @@ class ProfileScreen extends StatelessWidget {
                     radius: 60,
                     backgroundColor: primary.withAlpha(51),
                     child: Text(
-                      _avatarInitial(user?.name ?? profile.preferredName ?? ''),
+                      _avatarInitial(displayName),
                       style: TextStyle(
                         fontSize: 38,
                         color: primary,
@@ -60,7 +63,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user?.name ?? profile.preferredName ?? 'Health Sync member',
+                    displayName,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -68,9 +71,9 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if ((user?.email ?? '').isNotEmpty)
+                  if (email.isNotEmpty)
                     Text(
-                      user!.email,
+                      email,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                         fontSize: 15,
@@ -91,8 +94,6 @@ class ProfileScreen extends StatelessWidget {
                         'Hypertension',
                         profile.hasHypertension ? 'Yes' : 'No',
                       ),
-                      if (profile.goal.isNotEmpty)
-                        _infoRow('Goal', profile.goal),
                     ],
                   ),
                   const SizedBox(height: 25),

@@ -175,7 +175,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _isLoading = true);
 
-    await appState.register(
+    final success = await appState.register(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -184,6 +184,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (!mounted) return;
+
+    if (!success) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.translate('generalError')),
+          backgroundColor: colorScheme.error,
+        ),
+      );
+      return;
+    }
 
     messenger.showSnackBar(
       SnackBar(

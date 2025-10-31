@@ -5,7 +5,6 @@ class UserProfile {
   final String gender;
   final bool hasDiabetes;
   final bool hasHypertension;
-  final String goal;
   final String? preferredName;
 
   const UserProfile({
@@ -15,7 +14,6 @@ class UserProfile {
     required this.gender,
     required this.hasDiabetes,
     required this.hasHypertension,
-    required this.goal,
     this.preferredName,
   });
 
@@ -26,7 +24,6 @@ class UserProfile {
     String? gender,
     bool? hasDiabetes,
     bool? hasHypertension,
-    String? goal,
     String? preferredName,
   }) {
     return UserProfile(
@@ -36,7 +33,6 @@ class UserProfile {
       gender: gender ?? this.gender,
       hasDiabetes: hasDiabetes ?? this.hasDiabetes,
       hasHypertension: hasHypertension ?? this.hasHypertension,
-      goal: goal ?? this.goal,
       preferredName: preferredName ?? this.preferredName,
     );
   }
@@ -49,7 +45,6 @@ class UserProfile {
       'gender': gender,
       'hasDiabetes': hasDiabetes,
       'hasHypertension': hasHypertension,
-      'goal': goal,
       'preferredName': preferredName,
     };
   }
@@ -62,7 +57,6 @@ class UserProfile {
       gender: map['gender'] as String,
       hasDiabetes: map['hasDiabetes'] as bool,
       hasHypertension: map['hasHypertension'] as bool,
-      goal: map['goal'] as String,
       preferredName: map['preferredName'] as String?,
     );
   }

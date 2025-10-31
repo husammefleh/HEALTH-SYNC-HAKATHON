@@ -41,35 +41,6 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 10),
           _buildCard(
             context,
-            child: ListTile(
-              leading: Icon(Icons.language, color: colorScheme.primary),
-              title: Text(l10n.translate('appLanguage')),
-              subtitle: Text(l10n.languageName(themeAndLocale.languageCode)),
-              trailing: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: themeAndLocale.languageCode,
-                  items: [
-                    DropdownMenuItem(
-                      value: 'en',
-                      child: Text(l10n.languageEnglish),
-                    ),
-                    DropdownMenuItem(
-                      value: 'ar',
-                      child: Text(l10n.languageArabic),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value == null || value == themeAndLocale.languageCode) {
-                      return;
-                    }
-                    context.read<ThemeAndLocaleService>().setLanguageCode(value);
-                  },
-                ),
-              ),
-            ),
-          ),
-          _buildCard(
-            context,
             child: SwitchListTile(
               thumbColor: WidgetStatePropertyAll(colorScheme.primary),
               title: Text(l10n.translate('notificationsToggle')),

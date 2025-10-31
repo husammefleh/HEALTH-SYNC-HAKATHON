@@ -1,53 +1,30 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../../services/meal_analysis_service.dart';
+import '../../../models/analysis_models.dart';
 
 class FoodAnalysisScreen extends StatefulWidget {
-  const FoodAnalysisScreen({
-    super.key,
-    required this.description,
-    this.mealType,
-    this.drink,
-    this.dessert,
-  });
+  const FoodAnalysisScreen({super.key, required this.result});
 
-  final String description;
-  final String? mealType;
-  final String? drink;
-  final String? dessert;
+  final FoodAnalysisOutput result;
 
   @override
   State<FoodAnalysisScreen> createState() => _FoodAnalysisScreenState();
 }
 
 class _FoodAnalysisScreenState extends State<FoodAnalysisScreen> {
-  Map<String, dynamic>? _analysis;
-  bool _isSaving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _simulateAnalysis();
-  }
-
-  Future<void> _simulateAnalysis() async {
-    final service = MealAnalysisService();
-    final result = await service.analyseMeal(
-      description: widget.description,
-      mealType: widget.mealType,
-      drink: widget.drink,
-      dessert: widget.dessert,
-    );
-    if (!mounted) return;
-    setState(() => _analysis = result);
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = context.l10n;
+    final analysis = widget.result;
+    final description = analysis.description.isNotEmpty
+        ? analysis.description
+        : l10n.translate('mealAnalysis');
+    final mealType = analysis.mealType;
+    final drink = analysis.drink;
+    final dessert = analysis.dessert;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -61,162 +38,129 @@ class _FoodAnalysisScreenState extends State<FoodAnalysisScreen> {
         ),
         centerTitle: true,
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _analysis == null
-            ? _AnalysisLoading(description: widget.description)
-            : _AnalysisResult(
-                result: _analysis!,
-                description: widget.description,
-                mealType: widget.mealType,
-                drink: widget.drink,
-                dessert: widget.dessert,
-                isSaving: _isSaving,
-                onSave: () async {
-                  if (_analysis == null || _isSaving) return;
-                  final navigator = Navigator.of(context);
-                  setState(() => _isSaving = true);
-                  await Future.delayed(const Duration(milliseconds: 250));
-                  if (!mounted) return;
-                  navigator.pop(_analysis);
-                },
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _AnalysisSummary(
+              description: description,
+              mealType: mealType != null
+                  ? l10n.translate('mealType_$mealType')
+                  : null,
+              drink: drink != null ? l10n.translate(drink) : null,
+              dessert: dessert != null && dessert != 'none'
+                  ? l10n.translate(dessert)
+                  : null,
+              summary: analysis.summary ?? analysis.recommendation,
+              theme: theme,
+              colorScheme: colorScheme,
+            ),
+            const SizedBox(height: 24),
+            _MacrosCard(
+              colorScheme: colorScheme,
+              calories: analysis.calories,
+              protein: analysis.protein,
+              carbs: analysis.carbs,
+              fats: analysis.fat,
+              cholesterol: analysis.cholesterol,
+              l10n: l10n,
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.check),
+                onPressed: () => Navigator.of(context).pop(),
+                label: Text(l10n.translate('saveToHistory')),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _AnalysisLoading extends StatelessWidget {
-  const _AnalysisLoading({required this.description});
-
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = context.l10n;
-
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: theme.colorScheme.primary),
-          const SizedBox(height: 24),
-          Text(
-            l10n.translate('analysingMealPlaceholder'),
-            style: theme.textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            description,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.primary),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnalysisResult extends StatelessWidget {
-  const _AnalysisResult({
-    required this.result,
+class _AnalysisSummary extends StatelessWidget {
+  const _AnalysisSummary({
     required this.description,
-    required this.mealType,
-    required this.drink,
-    required this.dessert,
-    required this.onSave,
-    required this.isSaving,
+    required this.summary,
+    required this.theme,
+    required this.colorScheme,
+    this.mealType,
+    this.drink,
+    this.dessert,
   });
 
-  final Map<String, dynamic> result;
   final String description;
+  final String summary;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
   final String? mealType;
   final String? drink;
   final String? dessert;
-  final VoidCallback onSave;
-  final bool isSaving;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final l10n = context.l10n;
+    final tags = <String>[];
+    if (mealType != null) tags.add(mealType!);
+    if (drink != null) {
+      tags.add('${context.l10n.translate('drinkLabel')}: $drink');
+    }
+    if (dessert != null) {
+      tags.add('${context.l10n.translate('dessertLabel')}: $dessert');
+    }
 
-    return Padding(
+    return Container(
       padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: theme.brightness == Brightness.dark
+            ? const []
+            : [
+                BoxShadow(
+                  color: Colors.black12.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+        border: Border.all(
+          color: theme.brightness == Brightness.dark
+              ? colorScheme.outlineVariant
+              : Colors.transparent,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             description,
-            style: theme.textTheme.titleLarge,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.primary,
+            ),
           ),
-          if (mealType != null || drink != null || dessert != null) ...[
-            const SizedBox(height: 8),
+          if (tags.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
-              runSpacing: 4,
-              children: [
-                if (mealType != null)
-                  _Tag(label: l10n.translate('mealType_$mealType')),
-                if (drink != null)
-                  _Tag(label: '${l10n.translate('drinkLabel')}: ${l10n.translate(drink!)}'),
-                if (dessert != null && dessert != 'none')
-                  _Tag(label: '${l10n.translate('dessertLabel')}: ${l10n.translate(dessert!)}'),
-              ],
+              runSpacing: 6,
+              children: tags
+                  .map(
+                    (tag) => Chip(
+                      label: Text(tag),
+                      backgroundColor: colorScheme.primary.withAlpha(24),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
-          const SizedBox(height: 24),
-          _NutritionRow(
-            label: l10n.translate('calories'),
-            value: '${result['calories']} kcal',
-          ),
-          const Divider(),
-          _NutritionRow(
-            label: l10n.translate('protein'),
-            value: '${result['protein']} g',
-          ),
-          _NutritionRow(
-            label: l10n.translate('carbs'),
-            value: '${result['carbs']} g',
-          ),
-          _NutritionRow(
-            label: l10n.translate('fats'),
-            value: '${result['fats']} g',
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withAlpha(30),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              result['summary'] as String? ?? '',
-              style: theme.textTheme.bodyLarge,
-            ),
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              icon: isSaving
-                  ? SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colorScheme.onPrimary,
-                      ),
-                    )
-                  : const Icon(Icons.check_circle_outline),
-              onPressed: isSaving ? null : onSave,
-              label: Text(l10n.translate('saveToHistory')),
-            ),
+          const SizedBox(height: 16),
+          Text(
+            summary,
+            style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
           ),
         ],
       ),
@@ -224,11 +168,68 @@ class _AnalysisResult extends StatelessWidget {
   }
 }
 
-class _NutritionRow extends StatelessWidget {
-  const _NutritionRow({
-    required this.label,
-    required this.value,
+class _MacrosCard extends StatelessWidget {
+  const _MacrosCard({
+    required this.colorScheme,
+    required this.calories,
+    required this.protein,
+    required this.carbs,
+    required this.fats,
+    required this.cholesterol,
+    required this.l10n,
   });
+
+  final ColorScheme colorScheme;
+  final int calories;
+  final double protein;
+  final double carbs;
+  final double fats;
+  final double cholesterol;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.primary.withAlpha(40)),
+      ),
+      child: Column(
+        children: [
+          _MacroRow(
+            label: l10n.translate('calories'),
+            value: '$calories kcal',
+          ),
+          const Divider(),
+          _MacroRow(
+            label: l10n.translate('protein'),
+            value: '${protein.toStringAsFixed(1)} g',
+          ),
+          const Divider(),
+          _MacroRow(
+            label: l10n.translate('carbs'),
+            value: '${carbs.toStringAsFixed(1)} g',
+          ),
+          const Divider(),
+          _MacroRow(
+            label: l10n.translate('fats'),
+            value: '${fats.toStringAsFixed(1)} g',
+          ),
+          const Divider(),
+          _MacroRow(
+            label: l10n.translate('cholesterol'),
+            value: '${cholesterol.toStringAsFixed(0)} mg',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroRow extends StatelessWidget {
+  const _MacroRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -247,31 +248,11 @@ class _NutritionRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: theme.textTheme.titleMedium,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withAlpha(80),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelMedium,
       ),
     );
   }

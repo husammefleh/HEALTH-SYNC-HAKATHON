@@ -43,7 +43,7 @@ class _Step3WeightScreenState extends State<Step3WeightScreen> {
           children: [
             LinearProgressIndicator(
               value: 0.6,
-              backgroundColor: colorScheme.surfaceVariant,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               color: colorScheme.primary,
               minHeight: 6,
             ),

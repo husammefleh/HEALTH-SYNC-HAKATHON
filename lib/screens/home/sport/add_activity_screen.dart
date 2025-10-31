@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-
-import 'loading_activity_screen.dart';
+import '../../../models/analysis_models.dart';
+import '../../common/ai_loading_screen.dart';
+import 'activity_result_screen.dart';
 
 class AddActivityScreen extends StatefulWidget {
   const AddActivityScreen({super.key});
@@ -13,26 +14,44 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _minutesController = TextEditingController();
-  final TextEditingController _caloriesController = TextEditingController();
+  bool _isSaving = false;
 
   Future<void> _saveActivity() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
 
-    final newActivity = {
-      'name': _nameController.text.trim(),
-      'minutes': int.parse(_minutesController.text),
-      'calories': int.parse(_caloriesController.text),
-    };
+    final name = _nameController.text.trim();
+    final minutes = int.parse(_minutesController.text.trim());
 
-    final result = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LoadingActivityScreen(activityData: newActivity),
-      ),
-    );
+    try {
+      final result = await Navigator.of(context).push<ActivityAnalysisOutput>(
+        AiLoadingScreen.route(
+          AiAnalysisRequest<ActivityAnalysisOutput>(
+            loadingTitle: 'Analysing your workout...',
+            loadingDescription:
+                'We are estimating energy use and coaching tips for this session.',
+            icon: Icons.fitness_center,
+            perform: (coordinator, appState) =>
+                coordinator.performActivityAnalysis(
+              ActivityAnalysisInput(
+                exerciseType: name,
+                durationMinutes: minutes,
+              ),
+            ),
+            onResult: (context, analysis) =>
+                ActivityResultScreen(result: analysis),
+          ),
+        ),
+      );
 
-    if (result != null && mounted) {
-      Navigator.pop(context, result);
+      if (!mounted) return;
+      if (result != null) {
+        Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -94,29 +113,8 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Please enter the duration';
                   }
-                  if (int.tryParse(value) == null) {
+                  if (int.tryParse(value.trim()) == null) {
                     return 'Duration must be numeric';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _caloriesController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Calories burned (kcal)',
-                  prefixIcon: const Icon(Icons.local_fire_department),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the calories burned';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Calories must be numeric';
                   }
                   return null;
                 },
@@ -137,7 +135,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: _saveActivity,
+                  onPressed: _isSaving ? null : _saveActivity,
                 ),
               ),
             ],
@@ -147,4 +145,3 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
     );
   }
 }
-

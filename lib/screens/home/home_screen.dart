@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final userName = appState.user?.name ?? l10n.translate('appTitle');
+    final userName = appState.user?.username ?? appState.user?.email ?? l10n.translate('appTitle');
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

@@ -11,7 +11,6 @@ class SummaryScreen extends StatelessWidget {
   final double height;
   final double weight;
   final String gender;
-  final String goal;
   final bool hasDiabetes;
   final bool hasHypertension;
   final int age;
@@ -21,7 +20,6 @@ class SummaryScreen extends StatelessWidget {
     required this.height,
     required this.weight,
     required this.gender,
-    required this.goal,
     required this.hasDiabetes,
     required this.hasHypertension,
     required this.age,
@@ -33,7 +31,7 @@ class SummaryScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = context.l10n;
-    final userName = appState.user?.name;
+    final userName = appState.user?.username ?? appState.user?.email;
     final displayName =
         (userName != null && userName.isNotEmpty) ? userName : l10n.translate('defaultDisplayName');
 
@@ -74,7 +72,6 @@ class SummaryScreen extends StatelessWidget {
                   gender: gender,
                   hasDiabetes: hasDiabetes,
                   hasHypertension: hasHypertension,
-                  goal: goal,
                   preferredName: displayName,
                 );
 
@@ -151,12 +148,6 @@ class SummaryScreen extends StatelessWidget {
             context,
             label: l10n.translate('genderLabel'),
             value: l10n.genderLabel(gender),
-          ),
-          const Divider(),
-          _buildInfoRow(
-            context,
-            label: l10n.translate('goalLabel'),
-            value: l10n.goalLabel(goal),
           ),
           const Divider(),
           _buildInfoRow(

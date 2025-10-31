@@ -5,23 +5,18 @@ import '../l10n/app_localizations.dart';
 
 class ThemeAndLocaleService extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
-  Locale _locale = const Locale('en');
+  final Locale _locale = const Locale('en');
   bool _initialized = false;
 
   static const _themeModeKey = 'theme_and_locale.theme_mode';
-  static const _languageCodeKey = 'theme_and_locale.language_code';
 
   Future<void> initialize() async {
     if (_initialized) return;
     final prefs = await SharedPreferences.getInstance();
     final themeString = prefs.getString(_themeModeKey);
-    final languageCode = prefs.getString(_languageCodeKey);
 
     if (themeString != null) {
       _themeMode = _themeModeFromString(themeString);
-    }
-    if (languageCode != null && languageCode.isNotEmpty) {
-      _locale = _resolveSupportedLocale(languageCode) ?? _locale;
     }
     _initialized = true;
     notifyListeners();
@@ -31,8 +26,7 @@ class ThemeAndLocaleService extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   Locale get locale => _locale;
   String get languageCode => _locale.languageCode;
-  TextDirection get textDirection =>
-      _locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr;
+  TextDirection get textDirection => TextDirection.ltr;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
   Iterable<Locale> get supportedLocales => AppLocalizations.supportedLocales;
 
@@ -46,19 +40,6 @@ class ThemeAndLocaleService extends ChangeNotifier {
     _themeMode = mode;
     await _persistThemeMode();
     notifyListeners();
-  }
-
-  Future<void> setLocale(Locale locale) async {
-    final normalized =
-        _resolveSupportedLocale(locale.languageCode) ?? AppLocalizations.supportedLocales.first;
-    if (_locale == normalized) return;
-    _locale = normalized;
-    await _persistLocale();
-    notifyListeners();
-  }
-
-  Future<void> setLanguageCode(String code) async {
-    await setLocale(Locale(code));
   }
 
   Locale? localeResolutionCallback(Locale? deviceLocale, Iterable<Locale> supportedLocales) {
@@ -87,17 +68,5 @@ class ThemeAndLocaleService extends ChangeNotifier {
     await prefs.setString(_themeModeKey, _themeMode.name);
   }
 
-  Future<void> _persistLocale() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_languageCodeKey, _locale.languageCode);
-  }
-
-  Locale? _resolveSupportedLocale(String code) {
-    for (final locale in AppLocalizations.supportedLocales) {
-      if (locale.languageCode == code) {
-        return locale;
-      }
-    }
-    return null;
-  }
+  // Locale is fixed to English, so persistence is unnecessary.
 }

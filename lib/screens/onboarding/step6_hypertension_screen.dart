@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../widgets/onboarding_primary_button.dart';
-import 'step7_goal_screen.dart';
+import 'summary_screen.dart';
 
 class HypertensionScreen extends StatefulWidget {
   final double height;
@@ -92,7 +92,7 @@ class _HypertensionScreenState extends State<HypertensionScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GoalScreen(
+                    builder: (context) => SummaryScreen(
                       height: widget.height,
                       weight: widget.weight,
                       gender: widget.gender,

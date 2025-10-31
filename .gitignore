@@ -1,3 +1,11 @@
+# // HACKATHON: Ignore sensitive config and generated artifacts before GitHub push.
+.env
+*.json
+*.key
+*.pem
+build/
+.flutter-plugins
+
 # Miscellaneous
 *.class
 *.log

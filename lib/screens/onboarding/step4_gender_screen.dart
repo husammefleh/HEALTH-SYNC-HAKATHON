@@ -53,7 +53,7 @@ class _Step4GenderScreenState extends State<Step4GenderScreen> {
           children: [
             LinearProgressIndicator(
               value: 0.8,
-              backgroundColor: colorScheme.surfaceVariant,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               color: colorScheme.primary,
               minHeight: 6,
             ),

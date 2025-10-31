@@ -12,6 +12,12 @@ class AppStorage {
   static const activityEntriesKey = 'activity_entries';
   static const medicineEntriesKey = 'medicine_entries';
   static const onboardingKey = 'has_completed_onboarding';
+  static const authTokenKey = 'auth_token';
+  static const foodMetadataKey = 'food_metadata';
+  static const medicineMetadataKey = 'medicine_metadata';
+  static const sleepMetadataKey = 'sleep_metadata';
+  static const activityMetadataKey = 'activity_metadata';
+  static const healthMetadataKey = 'health_metadata';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -58,6 +64,21 @@ class AppStorage {
   static Future<bool> readBool(String key, {bool defaultValue = false}) async {
     final prefs = await _prefs();
     return prefs.getBool(key) ?? defaultValue;
+  }
+
+  static Future<void> setString(String key, String value) async {
+    final prefs = await _prefs();
+    await prefs.setString(key, value);
+  }
+
+  static Future<String?> readString(String key) async {
+    final prefs = await _prefs();
+    return prefs.getString(key);
+  }
+
+  static Future<void> remove(String key) async {
+    final prefs = await _prefs();
+    await prefs.remove(key);
   }
 
   static Future<void> clearKeys(List<String> keys) async {

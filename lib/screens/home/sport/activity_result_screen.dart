@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
 
-class ActivityResultScreen extends StatelessWidget {
-  final Map<String, dynamic> result;
+import '../../../l10n/app_localizations.dart';
+import '../../../models/analysis_models.dart';
 
+class ActivityResultScreen extends StatelessWidget {
   const ActivityResultScreen({super.key, required this.result});
+
+  final ActivityAnalysisOutput result;
 
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
+    final l10n = context.l10n;
+    final name = result.exerciseType;
+    final minutes = result.durationMinutes;
+    final calories = result.caloriesBurned;
+    final recommendation = result.recommendation;
+    final tip = result.secondaryTip;
+    final summary = result.summary ?? result.recommendation;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -15,9 +25,9 @@ class ActivityResultScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 2,
         centerTitle: true,
-        title: const Text(
-          'Workout analysis',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.translate('activityResultTitle'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         iconTheme: IconThemeData(color: primary),
       ),
@@ -28,7 +38,7 @@ class ActivityResultScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
             Text(
-              result['name'] ?? 'Activity',
+              name,
               style: TextStyle(
                 fontSize: 24,
                 color: primary,
@@ -51,35 +61,46 @@ class ActivityResultScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildRow('Duration', '${result['minutes']} min'),
-                  _buildRow('Calories burned', '${result['calories']} kcal'),
+                  _buildRow(
+                    context,
+                    l10n.translate('activityResultDuration'),
+                    l10n
+                        .translate('activityResultDurationValue')
+                        .replaceFirst('{minutes}', minutes.toString()),
+                  ),
+                  _buildRow(
+                    context,
+                    l10n.translate('activityResultCalories'),
+                    l10n
+                        .translate('activityResultCaloriesValue')
+                        .replaceFirst('{calories}', calories.toString()),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 30),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: primary.withAlpha(26),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text(
-                result['aiTip'] ??
-                    'Great effort! Remember to stretch and hydrate after every workout.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+            const SizedBox(height: 20),
+            _InfoBanner(
+              icon: Icons.auto_graph,
+              title: l10n.translate('aiAnalysisTitle'),
+              color: primary,
+              text: summary,
+            ),
+            const SizedBox(height: 14),
+            _InfoBanner(
+              icon: Icons.lightbulb_outline,
+              title: l10n.translate('aiTipTitle'),
+              color: primary,
+              text: tip != null && tip.isNotEmpty
+                  ? '$recommendation\n$tip'
+                  : recommendation,
             ),
             const Spacer(),
             ElevatedButton.icon(
-              icon: const Icon(Icons.check, color: Colors.white),
-              label: const Text(
-                'Save activity',
-                style: TextStyle(fontSize: 18, color: Colors.white),
+              icon: const Icon(Icons.home_outlined, color: Colors.white),
+              label: Text(
+                l10n.translate('backToHomeButton'),
+                style: const TextStyle(fontSize: 18, color: Colors.white),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primary,
@@ -89,7 +110,10 @@ class ActivityResultScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () => Navigator.pop(context, result),
+              onPressed: () => Navigator.popUntil(
+                context,
+                (route) => route.isFirst || route.settings.name == '/home',
+              ),
             ),
           ],
         ),
@@ -97,7 +121,7 @@ class ActivityResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(String label, String value) {
+  Widget _buildRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -105,15 +129,17 @@ class ActivityResultScreen extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
           ),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, color: Colors.black54),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(color: Colors.black54, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -121,3 +147,57 @@ class ActivityResultScreen extends StatelessWidget {
   }
 }
 
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.text,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withAlpha(26),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            textAlign: TextAlign.start,
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.6,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

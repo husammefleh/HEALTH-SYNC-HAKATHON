@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/food_entry.dart';
 import '../../../state/app_state.dart';
+import '../../common/hedera_badge.dart';
 import 'food_add_screen.dart';
 
 class FoodScreen extends StatelessWidget {
@@ -39,7 +40,8 @@ class FoodScreen extends StatelessWidget {
         elevation: theme.brightness == Brightness.dark ? 0 : 2,
         title: Text(
           l10n.translate('mealsNutrition'),
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         iconTheme: IconThemeData(color: primary),
@@ -82,14 +84,13 @@ class FoodScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     remaining > 0
-                        ? l10n.translate('remainingCaloriesMessage')
+                        ? l10n
+                            .translate('remainingCaloriesMessage')
                             .replaceFirst('{remaining}', remaining.toString())
                         : l10n.translate('calorieGoalReached'),
                     style: TextStyle(
                       fontSize: 15,
-                      color: remaining > 0
-                          ? primary
-                          : theme.colorScheme.error,
+                      color: remaining > 0 ? primary : theme.colorScheme.error,
                     ),
                   ),
                 ],
@@ -112,7 +113,8 @@ class FoodScreen extends StatelessWidget {
                         l10n.translate('noMealsPlaceholder'),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontSize: 16,
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.7),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -123,7 +125,8 @@ class FoodScreen extends StatelessWidget {
                         final meal = entries[index];
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 8),
-                          elevation: theme.brightness == Brightness.dark ? 0 : 3,
+                          elevation:
+                              theme.brightness == Brightness.dark ? 0 : 3,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -139,27 +142,41 @@ class FoodScreen extends StatelessWidget {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             meal.description,
-                                            style: theme.textTheme.titleMedium?.copyWith(
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            _formatDate(context, meal.analysedAt),
-                                            style: theme.textTheme.bodySmall?.copyWith(
-                                              color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                            _formatDate(
+                                                context, meal.analysedAt),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: theme
+                                                  .textTheme.bodySmall?.color
+                                                  ?.withOpacity(0.6),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    Text(
-                                      '${meal.calories} kcal',
-                                      style: theme.textTheme.titleMedium,
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        const HederaBadge(),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${meal.calories} kcal',
+                                          style: theme.textTheme.titleMedium,
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -169,10 +186,15 @@ class FoodScreen extends StatelessWidget {
                                   runSpacing: 4,
                                   children: [
                                     if (meal.mealType != null)
-                                      _MealTag(label: l10n.translate('mealType_${meal.mealType}')),
+                                      _MealTag(
+                                          label: l10n.translate(
+                                              'mealType_${meal.mealType}')),
                                     if (meal.drink != null)
-                                      _MealTag(label: '${l10n.translate('drinkLabel')}: ${l10n.translate(meal.drink!)}'),
-                                    if (meal.dessert != null && meal.dessert != 'none')
+                                      _MealTag(
+                                          label:
+                                              '${l10n.translate('drinkLabel')}: ${l10n.translate(meal.drink!)}'),
+                                    if (meal.dessert != null &&
+                                        meal.dessert != 'none')
                                       _MealTag(
                                         label:
                                             '${l10n.translate('dessertLabel')}: ${l10n.translate(meal.dessert!)}',
@@ -180,23 +202,33 @@ class FoodScreen extends StatelessWidget {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 8,
                                   children: [
                                     _MacroBadge(
                                       label: l10n.translate('protein'),
-                                      value: '${meal.proteinGrams.toStringAsFixed(1)} g',
+                                      value:
+                                          '${meal.proteinGrams.toStringAsFixed(1)} g',
                                       color: Colors.green,
                                     ),
                                     _MacroBadge(
                                       label: l10n.translate('carbs'),
-                                      value: '${meal.carbsGrams.toStringAsFixed(1)} g',
+                                      value:
+                                          '${meal.carbsGrams.toStringAsFixed(1)} g',
                                       color: Colors.orange,
                                     ),
                                     _MacroBadge(
                                       label: l10n.translate('fats'),
-                                      value: '${meal.fatGrams.toStringAsFixed(1)} g',
+                                      value:
+                                          '${meal.fatGrams.toStringAsFixed(1)} g',
                                       color: Colors.redAccent,
+                                    ),
+                                    _MacroBadge(
+                                      label: 'Cholesterol',
+                                      value:
+                                          '${meal.cholesterolMg.toStringAsFixed(0)} mg',
+                                      color: Colors.deepPurple,
                                     ),
                                   ],
                                 ),
@@ -263,7 +295,7 @@ class _MealTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withAlpha(90),
+        color: theme.colorScheme.surfaceContainerHighest.withAlpha(90),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(

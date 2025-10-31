@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../models/sleep_entry.dart';
 import '../../../state/app_state.dart';
+import '../../common/hedera_badge.dart';
 
 class SleepScreen extends StatelessWidget {
   const SleepScreen({super.key});
@@ -18,17 +20,21 @@ class SleepScreen extends StatelessWidget {
     final double average =
         entries.isNotEmpty ? totalHours / entries.length : 0.0;
     final double weekHours = appState.totalSleepHoursThisWeek();
-    final primary = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primary = colorScheme.primary;
+    final l10n = context.l10n;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 2,
+        backgroundColor: colorScheme.surface,
+        elevation: theme.brightness == Brightness.dark ? 0 : 2,
         centerTitle: true,
-        title: const Text(
-          'Sleep',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.translate('sleepTracking'),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         iconTheme: IconThemeData(color: primary),
       ),
@@ -38,11 +44,14 @@ class SleepScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SleepHeader(
-                latest: latest, average: average, weekHours: weekHours),
+              latest: latest,
+              average: average,
+              weekHours: weekHours,
+            ),
             const SizedBox(height: 24),
             Text(
-              'History',
-              style: TextStyle(
+              l10n.translate('sleepHistoryTitle'),
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: primary,
@@ -51,10 +60,14 @@ class SleepScreen extends StatelessWidget {
             const SizedBox(height: 10),
             Expanded(
               child: entries.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        'No sleep sessions logged yet. Add your first sleep record.',
-                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                        l10n.translate('sleepHistoryEmpty'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 16,
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.7),
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     )
@@ -73,10 +86,28 @@ class SleepScreen extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            subtitle: Text(
-                              _formatDate(entry.date),
-                              style: const TextStyle(color: Colors.black54),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _formatDate(entry.date),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.textTheme.bodySmall?.color
+                                        ?.withOpacity(0.7),
+                                  ),
+                                ),
+                                if (entry.recommendation != null &&
+                                    entry.recommendation!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      entry.recommendation!,
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                  ),
+                              ],
                             ),
+                            trailing: const HederaBadge(compact: true),
                           ),
                         );
                       },
@@ -87,9 +118,13 @@ class SleepScreen extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.add),
-                label: const Text(
-                  'Add sleep session',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                label: Text(
+                  l10n.translate('sleepAddSessionButton'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onPrimary,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primary,
@@ -125,8 +160,11 @@ class _SleepHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    final subtitleStyle = const TextStyle(fontSize: 16, color: Colors.black87);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primary = colorScheme.primary;
+    final l10n = context.l10n;
+    final recommendation = latest?.recommendation?.trim();
 
     return Container(
       width: double.infinity,
@@ -140,23 +178,47 @@ class _SleepHeader extends StatelessWidget {
         children: [
           Text(
             latest != null
-                ? 'Last session: ${latest!.hours.toStringAsFixed(1)} hours'
-                : 'No sleep data recorded yet',
-            style: const TextStyle(
+                ? l10n
+                    .translate('sleepSummaryLastSession')
+                    .replaceFirst('{hours}', latest!.hours.toStringAsFixed(1))
+                : l10n.translate('sleepSummaryNoData'),
+            style: theme.textTheme.titleMedium?.copyWith(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: theme.colorScheme.onPrimaryContainer,
             ),
           ),
           const SizedBox(height: 10),
-          Text('Average duration: ${average.toStringAsFixed(1)} hours',
-              style: subtitleStyle),
+          Text(
+            l10n
+                .translate('sleepSummaryAverage')
+                .replaceFirst('{hours}', average.toStringAsFixed(1)),
+            style: theme.textTheme.bodyMedium,
+          ),
           const SizedBox(height: 4),
-          Text('Past 7 days total: ${weekHours.toStringAsFixed(1)} hours',
-              style: subtitleStyle),
+          Text(
+            l10n
+                .translate('sleepSummaryWeek')
+                .replaceFirst('{hours}', weekHours.toStringAsFixed(1)),
+            style: theme.textTheme.bodyMedium,
+          ),
+          if (recommendation != null && recommendation.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              l10n.translate('sleepLatestRecommendation'),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              recommendation,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+            ),
+          ],
         ],
       ),
     );
   }
 }
-
